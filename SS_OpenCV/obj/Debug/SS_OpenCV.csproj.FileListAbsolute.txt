@@ -254,3 +254,24 @@ C:\Users\ASUS\OneDrive\Ambiente de Trabalho\SS\SS_OpenCV_Base\SS_OpenCV\obj\Debu
 C:\Users\ASUS\OneDrive\Ambiente de Trabalho\SS\SS_OpenCV_Base\SS_OpenCV\obj\Debug\SS_OpenCV.pdb
 C:\Users\ASUS\OneDrive\Ambiente de Trabalho\SS\SS_OpenCV_Base\SS_OpenCV\obj\Debug\SS_OpenCV.Form1.resources
 C:\Users\ASUS\OneDrive\Ambiente de Trabalho\SS\SS_OpenCV_Base\SS_OpenCV\obj\Debug\SS_OpenCV.HistogramForm.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\SS_OpenCV.exe.config
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\SS_OpenCV.exe
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\SS_OpenCV.pdb
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\ZedGraph.dll
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\Emgu.CV.UI.xml
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\Emgu.CV.World.xml
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\Forms.pdb
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\bin\Debug\SS_Eval.pdb
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.AssemblyReference.cache
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.SuggestedBindingRedirects.cache
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.AuthorsForm.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.Form1.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.HistogramForm.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.InputBox.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.MainForm.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.Properties.Resources.resources
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.GenerateResource.cache
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.CoreCompileInputs.cache
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.CopyComplete
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.exe
+D:\Universidade\SS\Projeto - Código QR\SS_OpenCV\obj\Debug\SS_OpenCV.pdb

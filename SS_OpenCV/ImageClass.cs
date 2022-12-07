@@ -9,6 +9,8 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Security.Policy;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+using System.Linq.Expressions;
 
 namespace SS_OpenCV
 {
@@ -1596,19 +1598,19 @@ namespace SS_OpenCV
             out int Center_x, out int Center_y, out int Width, out int Height, out float Rotation, out string BinaryOut,
             out int UL_x_out, out int UL_y_out, out int UR_x_out, out int UR_y_out, out int LL_x_out, out int LL_y_out)
         {
-            Center_x = 100;
-            Center_y = 100;
-            Width = 50;
-            Height = 50;
+            Center_x = 0;
+            Center_y = 0;
+            Width = 0;
+            Height = 0;
             Rotation = 0;
             BinaryOut = "";
 
-            UL_x_out = 10;
-            UL_y_out = 10;
-            UR_x_out = 90;
-            UR_y_out = 10;
-            LL_x_out = 10;
-            LL_y_out = 90;
+            UL_x_out = 0;
+            UL_y_out = 0;
+            UR_x_out = 0;
+            UR_y_out = 0;
+            LL_x_out = 0;
+            LL_y_out = 0;
 
             unsafe
             {
@@ -1618,8 +1620,7 @@ namespace SS_OpenCV
                 MIplImage copy = img.MIplImage;
 
                 byte* dataPtrOrigin = (byte*)origin.ImageData.ToPointer(); // Pointer to the image
-
-                byte* dataPtrCopy = (byte*)copy.ImageData.ToPointer(); // imagem de trabalho
+                byte* dataPtrCopy = (byte*)origin.ImageData.ToPointer(); // imagem de trabalho
 
                 int width = copy.Width;
                 int height = copy.Height;
@@ -1629,107 +1630,282 @@ namespace SS_OpenCV
                 int padding = widthstep - nChan * width;
 
                 int paddingOrigin = origin.WidthStep - origin.NChannels * origin.Width;
-                int x, y;
-                Boolean isChanged = true;
+                int x, y, result;
 
-                dataPtrCopy += nChan + widthstep;
-                int[,] matrix = new int[height+2,width+2];
-                int objectsNumber = 1,result, iteCounter = 1,threshold = 17, min;
+                int[,] matrix = new int[height + 2, width + 2];
+                int objectsNumber = 1;
+                int[] mins;
+
+                int parent, son, temp;
+                int[] collisions = new int[1000];
 
 
+                //int[,] matrix = new int[height+2,width+2];
+                int threshold = 17;
+
+                // binarização e primeiro passo do Componentes ligados
                 for (y = 0; y < height; y++)
                 {
                     for (x = 0; x < width; x++)
                     {
-                        //result = (int)Math.Round((dataPtrCopy[0] + dataPtrCopy[1] + dataPtrCopy[2]) / 3.0);
+                        result = (int)Math.Round((dataPtrCopy[0] + dataPtrCopy[1] + dataPtrCopy[2]) / 3.0);
 
-                        //if (result > threshold)
-                        //{
-                        //    dataPtrCopy[0] = (byte)255;
-                        //    dataPtrCopy[1] = (byte)255;
-                        //    dataPtrCopy[2] = (byte)255;
-                        //}
-                        //else
-                        //{
-                        //    dataPtrCopy[0] = (byte)0;
-                        //    dataPtrCopy[1] = (byte)0;
-                        //    dataPtrCopy[2] = (byte)0;
-                        //}
+                        if (result > threshold)
+                        {
+                            dataPtrCopy[0] = (byte)255;
+                            dataPtrCopy[1] = (byte)255;
+                            dataPtrCopy[2] = (byte)255;
+                        }
+                        else
+                        {
+                            dataPtrCopy[0] = (byte)0;
+                            dataPtrCopy[1] = (byte)0;
+                            dataPtrCopy[2] = (byte)0;
+                        }
 
                         if (dataPtrCopy[0] == 0)
                         {
                             if (Max(matrix[y, x + 1], matrix[y + 1, x]) == 0)
                             {
                                 matrix[y + 1, x + 1] = objectsNumber;
+                                collisions[objectsNumber] = objectsNumber;
                                 objectsNumber++;
 
                             }
                             else
                             {
-                                matrix[y + 1, x + 1] = Min(matrix[y, x + 1], matrix[y + 1, x]);
-
+                                mins = MinOrdem(matrix[y, x + 1], matrix[y + 1, x]);
+                                matrix[y + 1, x + 1] = mins[0];
+                                if (matrix[y, x + 1] != 0 && matrix[y + 1, x] != 0)
+                                {
+                                    parent = mins[0];
+                                    son = mins[1];
+                                    while (collisions[son] != son)
+                                    {
+                                        temp = collisions[son];
+                                        collisions[son] = parent;
+                                        son = temp;
+                                    }
+                                    collisions[son] = parent;
+                                }
                             }
-                            matrix[y, x] = 1;
                         }
+                        dataPtrCopy += nChan;
+                        dataPtrOrigin += origin.NChannels;
+                    }
+                    dataPtrCopy += padding;
+                    dataPtrOrigin += paddingOrigin;
+                }
+
+
+                for (int i = 1; i < objectsNumber; i++)
+                {
+                    if (collisions[i] != i)
+                    {
+                        collisions[i] = collisions[collisions[i]];
+                    }
+                }
+
+                //solve collisions
+                for (y = 0; y < height; y++)
+                {
+                    for (x = 0; x < width; x++)
+                    {
+                        matrix[x + 1, y + 1] = collisions[matrix[x + 1, y + 1]];
+
                         dataPtrCopy += nChan;
                     }
                     dataPtrCopy += padding;
-
                 }
 
-                while (isChanged)
+                //TableForm.ShowTable(collisions, "colisoes");
+                //TableForm.ShowTable(matrix, "componentes ligados");
+
+
+                int[,] objectData = new int[objectsNumber + 1, 5];
+                int obj;
+
+                for (y = 0; y < height; y++)
                 {
-                    isChanged = false;
-
-                    if (iteCounter % 2 == 0)
+                    for (x = 0; x < width; x++)
                     {
-
-                        for (y = 0; y < height; y++)
+                        if (matrix[y + 1, x + 1] != 0)
                         {
-                            for (x = 0; x < width; x++)
-                            {
-
-                                if (dataPtrCopy[0] == 0 && Max(matrix[y, x + 1], matrix[y + 1, x]) != 0)
-                                {
-                                    min = Min(matrix[y, x + 1], matrix[y + 1, x]);
-                                    if (min < matrix[y + 1, x + 1])
-                                    {
-                                        matrix[y + 1, x + 1] = min;
-                                        isChanged = true;
-                                    }
-
-                                }
-                                dataPtrCopy += nChan;
-                            }
-                            dataPtrCopy += padding;
+                            obj = matrix[y + 1, x + 1];
+                            objectData[obj, 0]++;
+                            objectData[obj, 1] += x;
+                            objectData[obj, 2] += y;
                         }
                     }
-                    else
-                    {
-                        for (y = width - 1; y >= 0; y--)
-                        {
-                            for (x = height - 1; x >= 0; x--)
-                            {
-                                if (dataPtrCopy[0] == 0 && Max(matrix[y + 1, x + 2], matrix[y + 2, x + 1]) != 0)
-                                {
-                                    min = Min(matrix[y + 1, x + 2], matrix[y + 2, x + 1]);
-                                    if (min < matrix[y + 1, x + 1])
-                                    {
-                                        matrix[y + 1, x + 1] = min;
-                                        isChanged = true;
-                                    }
-                                }
-
-                                dataPtrCopy -= nChan;
-                            }
-                            dataPtrCopy -= padding;
-                        }
-
-                    }
-                    iteCounter++;
                 }
-                TableForm.ShowTable(matrix, "objetos");
+
+                //TableForm.ShowTable(objectData, "informacao objetos");
+
+                int[,] alignmentBlocks = new int[3, 3];
+                int foundIndex = 0;
+                
+
+                for (x = 1; x < objectsNumber + 1; x++)
+                {
+                    if (objectData[x, 0] == 0) continue;
+
+                    objectData[x, 3] = (int)Math.Round((float)objectData[x, 1] / (float)objectData[x, 0]);
+
+                    objectData[x, 4] = (int)Math.Round((float)objectData[x, 2] / (float)objectData[x, 0]);
+
+
+                    for (y = x - 1; y >= 0; y--)
+                    {
+                        if (objectData[x, 3] == objectData[y, 3] && objectData[x, 4] == objectData[y, 4])
+                        {
+                            alignmentBlocks[foundIndex, 0] = objectData[x, 3];
+                            alignmentBlocks[foundIndex, 1] = objectData[x, 4];
+                            alignmentBlocks[foundIndex++, 2] = y;
+                            break;
+                        }
+                    }
+                }
+
+
+                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width);
+
+
+                findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out, 
+                    out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
+
+
+
+
+                //TableForm.ShowTable(alignmentBlocks, "QR");
+               
+
+
+                //Console.WriteLine(dist());
+
+
+
             }
         }
+
+        public static void findCenterAndAlignment(int[,] alignmentBlocks, out int Center_x, out int Center_y, out float Rotation,
+            out int UL_x_out, out int UL_y_out, out int UR_x_out, out int UR_y_out, out int LL_x_out, out int LL_y_out)
+        {
+            double dist01 = dist(alignmentBlocks[0, 0], alignmentBlocks[0, 1], alignmentBlocks[1, 0], alignmentBlocks[1, 1]);
+            double dist02 = dist(alignmentBlocks[0, 0], alignmentBlocks[0, 1], alignmentBlocks[2, 0], alignmentBlocks[2, 1]);
+            double dist12 = dist(alignmentBlocks[1, 0], alignmentBlocks[1, 1], alignmentBlocks[2, 0], alignmentBlocks[2, 1]);
+
+            double maxDist = Math.Max(Math.Max(dist01, dist02), dist12);
+            double cX, cY;
+
+            if(maxDist == dist01)
+            {
+                UL_x_out = alignmentBlocks[2, 0];
+                UL_y_out = alignmentBlocks[2, 1];
+                cX = Math.Round((alignmentBlocks[0, 0] + alignmentBlocks[1, 0]) / 2.0);
+                cY = Math.Round((alignmentBlocks[0, 1] + alignmentBlocks[1, 1]) / 2.0);
+            }
+            else if (maxDist == dist02)
+            {
+                UL_x_out = alignmentBlocks[1, 0];
+                UL_y_out = alignmentBlocks[1, 1];
+                cX = Math.Round((alignmentBlocks[0, 0] + alignmentBlocks[2, 0]) / 2.0);
+                cY = Math.Round((alignmentBlocks[0, 1] + alignmentBlocks[2, 1]) / 2.0);
+            }
+            else
+            {
+                UL_x_out = alignmentBlocks[0, 0];
+                UL_y_out = alignmentBlocks[0, 1];
+                cX = Math.Round((alignmentBlocks[1, 0] + alignmentBlocks[2, 0]) / 2.0);
+                cY = Math.Round((alignmentBlocks[1, 1] + alignmentBlocks[2, 1]) / 2.0);
+            }
+
+           
+            //if angle is in 2nd or 3rd quadrant add offset
+            int offset = cX > UL_x_out? -180 : 0;
+
+            Rotation = 135-(float)(180 / Math.PI) * (float)Math.Atan((cY - UL_y_out) / (UL_x_out - cX)) + offset;
+
+
+            Center_x = (int)cX;
+            Center_y = (int)cY;
+
+            UR_x_out = 0;
+            UR_y_out = 0;
+
+            LL_x_out = 0;
+            LL_y_out = 0;
+
+
+        }
+
+
+        public static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width)
+        {
+            int lowestX = 0, highestX = 0, lowestY = 0, highestY = 0;
+            int x, y;
+
+            for (y = 0; y < matrix.GetLength(0); y++)
+                for (x = 0; x < matrix.GetLength(1); x++)
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2]) {
+                        lowestY = y;
+                        goto nextLoop1;
+                    }
+
+            nextLoop1:
+
+            for (y = matrix.GetLength(0) - 1; y >= 0; y--)
+                for (x = 0; x < matrix.GetLength(1); x++)
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
+                    {
+                        highestY = y;
+                        goto nextLoop2;
+
+                    }
+
+            nextLoop2:
+
+            for (x = 0; x < matrix.GetLength(1); x++)
+                for (y = 0; y < matrix.GetLength(0); y++)
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2]) {
+                        lowestX = x;
+                        goto nextLoop3;
+                    }
+            nextLoop3:
+
+            for (x = matrix.GetLength(1)-1; x >= 0; x--) { 
+                for (y = 0; y < matrix.GetLength(0); y++)
+                {
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
+                    {
+                        highestX = x;
+                        goto end;
+                    }
+                }
+            }
+
+        end:
+
+            Console.WriteLine(lowestX);
+            Console.WriteLine(highestX);
+            Console.WriteLine(lowestY);
+            Console.WriteLine(highestY);
+            height = highestY - lowestY;
+            width = highestX - lowestX;
+
+        }
+
+
+
+        public static double dist(float x1, float y1, float x2, float y2)
+        {
+            return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
+
+        }
+
+
+
+
+
     }
+
 }
