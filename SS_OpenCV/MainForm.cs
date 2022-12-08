@@ -242,7 +242,7 @@ namespace SS_OpenCV
 
             formRotation.ShowDialog();
             float rotation = Convert.ToSingle(formRotation.ValueTextBox.Text);
-            ImageClass.Rotation(img,img, rotation);
+            ImageClass.Rotation(img, imgUndo, rotation);
 
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen
@@ -478,9 +478,12 @@ namespace SS_OpenCV
 
             //copy Undo Image
             imgUndo = img.Copy();
+            int a;
+            float b;
+            string c;
 
-            ImageClass.ComponentesLigadosClassico(img);
-
+            ImageClass.QRCodeReader(img, imgUndo, 0, out a, out a, out a, out a, out b, out c, out a, out a, out a, out a, out a, out a);
+            
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen
 

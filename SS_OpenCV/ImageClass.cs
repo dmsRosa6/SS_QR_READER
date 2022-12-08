@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Security.Policy;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace SS_OpenCV
 {
@@ -202,6 +203,67 @@ namespace SS_OpenCV
                 }
             }
         }
+
+        public static void Rotation1(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, float angle)
+        {
+
+            unsafe
+            {
+                // direct access to the image memory(sequencial)
+                // direcion top left -> bottom right
+
+                MIplImage m = img.MIplImage;
+                MIplImage copy = imgCopy.MIplImage;
+                byte* dataPtr = (byte*)m.ImageData.ToPointer(); // Pointer to the image
+                byte* dataPtrCpy = (byte*)copy.ImageData.ToPointer();
+
+                int width = copy.Width;
+                int height = copy.Height;
+                int nChan = copy.NChannels; // number of channels - 3
+                int widthstep = copy.WidthStep;
+                int padding = widthstep - nChan * width;
+                int x, y;
+                double h2 = height / 2.0;
+                double w2 = width / 2.0;
+                double cos = Math.Cos(angle);
+                double sin = Math.Sin(angle);
+                double newX;
+                double newY;
+                byte* newPixel;
+                double aux;
+
+                for (y = 0; y < height; y++)
+                {
+                    aux = (h2 - y);
+                    for (x = 0; x < width; x++)
+                    {
+
+                        newX = Math.Round((x - w2) * cos - aux * sin + w2);
+                        newY = Math.Round(h2 - (x - w2) * sin - aux * cos);
+
+                        if (newX >= width || newY >= height || newX < 0 || newY < 0)
+                        {
+                            dataPtr[0] = 0;
+                            dataPtr[1] = 0;
+                            dataPtr[2] = 0;
+                        }
+                        else
+                        {
+                            newPixel = (byte*)(dataPtrCpy + (int)newY * widthstep + (int)newX * nChan);
+                            dataPtr[0] = newPixel[0];
+                            dataPtr[1] = newPixel[1];
+                            dataPtr[2] = newPixel[2];
+                        }
+
+                        dataPtr += nChan;
+                    }
+                    dataPtr += padding;
+
+                }
+            }
+            Console.WriteLine("BOAS");
+        }
+
 
         public static void Rotation(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, float angle)
         {
@@ -1634,16 +1696,17 @@ namespace SS_OpenCV
 
                 int[,] matrix = new int[height + 2, width + 2];
                 int objectsNumber = 1;
-                int[] mins;
+                
 
-                int parent, son, temp;
+                
                 int[] collisions = new int[1000];
 
-
-                //int[,] matrix = new int[height+2,width+2];
+                int min;
+                Boolean isChanged = true;
                 int threshold = 17;
+                int iteCounter = 1;
 
-                // binarização e primeiro passo do Componentes ligados
+
                 for (y = 0; y < height; y++)
                 {
                     for (x = 0; x < width; x++)
@@ -1668,56 +1731,72 @@ namespace SS_OpenCV
                             if (Max(matrix[y, x + 1], matrix[y + 1, x]) == 0)
                             {
                                 matrix[y + 1, x + 1] = objectsNumber;
-                                collisions[objectsNumber] = objectsNumber;
                                 objectsNumber++;
 
                             }
                             else
                             {
-                                mins = MinOrdem(matrix[y, x + 1], matrix[y + 1, x]);
-                                matrix[y + 1, x + 1] = mins[0];
-                                if (matrix[y, x + 1] != 0 && matrix[y + 1, x] != 0)
-                                {
-                                    parent = mins[0];
-                                    son = mins[1];
-                                    while (collisions[son] != son)
-                                    {
-                                        temp = collisions[son];
-                                        collisions[son] = parent;
-                                        son = temp;
-                                    }
-                                    collisions[son] = parent;
-                                }
+                                matrix[y + 1, x + 1] = Min(matrix[y, x + 1], matrix[y + 1, x]);
+
                             }
                         }
                         dataPtrCopy += nChan;
-                        dataPtrOrigin += origin.NChannels;
                     }
                     dataPtrCopy += padding;
-                    dataPtrOrigin += paddingOrigin;
+
                 }
 
-
-                for (int i = 1; i < objectsNumber; i++)
+                while (isChanged)
                 {
-                    if (collisions[i] != i)
+                    isChanged = false;
+
+                    if (iteCounter % 2 == 0)
                     {
-                        collisions[i] = collisions[collisions[i]];
-                    }
-                }
 
-                //solve collisions
-                for (y = 0; y < height; y++)
-                {
-                    for (x = 0; x < width; x++)
+                        for (y = 0; y < height; y++)
+                        {
+                            for (x = 0; x < width; x++)
+                            {
+
+                                if (dataPtrCopy[0] == 0 && Max(matrix[y, x + 1], matrix[y + 1, x]) != 0)
+                                {
+                                    min = Min(matrix[y, x + 1], matrix[y + 1, x]);
+                                    if (min < matrix[y + 1, x + 1])
+                                    {
+                                        matrix[y + 1, x + 1] = min;
+                                        isChanged = true;
+                                    }
+
+                                }
+                                dataPtrCopy += nChan;
+                            }
+                            dataPtrCopy += padding;
+                        }
+                    }
+                    else
                     {
-                        matrix[x + 1, y + 1] = collisions[matrix[x + 1, y + 1]];
+                        for (y = width - 1; y >= 0; y--)
+                        {
+                            for (x = height - 1; x >= 0; x--)
+                            {
+                                if (dataPtrCopy[0] == 0 && Max(matrix[y + 1, x + 2], matrix[y + 2, x + 1]) != 0)
+                                {
+                                    min = Min(matrix[y + 1, x + 2], matrix[y + 2, x + 1]);
+                                    if (min < matrix[y + 1, x + 1])
+                                    {
+                                        matrix[y + 1, x + 1] = min;
+                                        isChanged = true;
+                                    }
+                                }
 
-                        dataPtrCopy += nChan;
+                                dataPtrCopy -= nChan;
+                            }
+                            dataPtrCopy -= padding;
+                        }
+
                     }
-                    dataPtrCopy += padding;
+                    iteCounter++;
                 }
-
                 //TableForm.ShowTable(collisions, "colisoes");
                 //TableForm.ShowTable(matrix, "componentes ligados");
 
@@ -1750,9 +1829,7 @@ namespace SS_OpenCV
                     if (objectData[x, 0] == 0) continue;
 
                     objectData[x, 3] = (int)Math.Round((float)objectData[x, 1] / (float)objectData[x, 0]);
-
                     objectData[x, 4] = (int)Math.Round((float)objectData[x, 2] / (float)objectData[x, 0]);
-
 
                     for (y = x - 1; y >= 0; y--)
                     {
@@ -1773,19 +1850,15 @@ namespace SS_OpenCV
                 findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out, 
                     out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
 
-
-
-
-                //TableForm.ShowTable(alignmentBlocks, "QR");
-               
-
-
-                //Console.WriteLine(dist());
-
+                Rotation1(img, imgCopy, Rotation);
 
 
             }
         }
+
+
+
+
 
         public static void findCenterAndAlignment(int[,] alignmentBlocks, out int Center_x, out int Center_y, out float Rotation,
             out int UL_x_out, out int UL_y_out, out int UR_x_out, out int UR_y_out, out int LL_x_out, out int LL_y_out)
@@ -1819,10 +1892,9 @@ namespace SS_OpenCV
                 cY = Math.Round((alignmentBlocks[1, 1] + alignmentBlocks[2, 1]) / 2.0);
             }
 
-           
-            //if angle is in 2nd or 3rd quadrant add offset
-            int offset = cX > UL_x_out? -180 : 0;
 
+            //if angle is in 2nd or 3rd quadrant add offset
+            int offset = cX > UL_x_out ? -180 : 0;
             Rotation = 135-(float)(180 / Math.PI) * (float)Math.Atan((cY - UL_y_out) / (UL_x_out - cX)) + offset;
 
 
