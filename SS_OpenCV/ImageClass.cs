@@ -233,6 +233,9 @@ namespace SS_OpenCV
                 byte* newPixel;
                 double aux;
 
+                Console.WriteLine("Angle: " + angle);
+
+
                 for (y = 0; y < height; y++)
                 {
                     aux = (h2 - y);
@@ -1320,20 +1323,62 @@ namespace SS_OpenCV
             unsafe
             {
 
-                // direct access to the image memory(sequencial)
-                // direcion top left -> bottom right
+                
                 MIplImage m = img.MIplImage;
-                byte* dataPtr = (byte*)m.ImageData.ToPointer(); // Pointer to the image
+                byte* dataPtr = (byte*) m.ImageData.ToPointer();
 
+                int i, t, tmax = 0;
+                double pi, q1 = 0, q2 = 0, Sip1 = 0, Sip2 = 0, u1 = 0, u2 = 0, sigma, smax = 0;
+
+                //Dimensões
                 int width = img.Width;
+                int widthStep = m.WidthStep;
                 int height = img.Height;
-                int widthstep = m.WidthStep;
-                int nChan = m.NChannels; // number of channels = 3
+                int nChan = m.NChannels; // number of channels - 3
+                int padding = m.WidthStep - m.NChannels * m.Width; // alinhamento bytes (padding)
+                int nPixels = width * height;
 
-                int padding = widthstep - nChan * width;
+                int[] histGray = new int[256];
+                histGray = Histogram_Gray(img);
 
+                for (t = 0; t <= 255; t++)
+                {
+                    q1 = q2 = Sip1 = Sip2 = 0;
+                    for (i = 0; i <= t; i++)
+                    {
+                        pi = (float)histGray[i] / nPixels;
+                        q1 += pi;
+                        Sip1 += (i * pi);
+                    }
+
+                    for (i = t + 1; i <= 255; i++)
+                    {
+                        pi = (float)histGray[i] / nPixels;
+                        q2 += pi;
+                        Sip2 += (i * pi);
+                    }
+
+                    if (q1 == 0 || q2 == 0)
+                        continue;
+
+                    u1 = Sip1 / q1;
+                    u2 = Sip2 / q2;
+
+                    sigma = q1 * q2 * Math.Pow((u1 - u2), 2);
+                    if (sigma > smax)
+                    {
+                        smax = sigma;
+                        tmax = t;
+                    }
+                }
+
+                ConvertToBW(img, tmax);
             }
         }
+
+        
+
+
 
 
         public static int Max(int val1, int val2)
@@ -1706,13 +1751,14 @@ namespace SS_OpenCV
                 int x, y, result;
 
                 int[,] matrix = new int[height + 2, width + 2];
-                int objectsNumber = 1;
-
+                int objectsNumber = 1;                
                 
-                int threshold = 17;
                 int[] mins;
                 int parent, son, temp, temp2;
                 int[] collisions = new int[height * width + 1];
+
+                int threshold = level == 4 ? Otsu_getTreshhold(img) : 17;
+
 
 
                 for (y = 0; y < height; y++)
@@ -1873,23 +1919,80 @@ namespace SS_OpenCV
                     }                    
                 }
 
-                mekie:
-                //TableForm.ShowTable(alignmentBlocks, "Alignment Blocks");
-                       
-
-
                 
+            mekie:
+                //TableForm.ShowTable(alignmentBlocks, "Alignment Blocks");              
 
 
-
-                findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out, 
+                findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out,
                     out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
+               
+                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width, 
+                    Center_x, Center_y, out int lowestX, out int lowestY);
 
-                
-                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width, Center_x, Center_y);
+                Translation(img, imgCopy, -lowestX, -lowestY);
 
                 Rotation1(img, imgCopy, Rotation);
 
+
+            }
+        }
+
+        public static int Otsu_getTreshhold(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.ImageData.ToPointer();
+
+                int i, t, tmax = 0;
+                double pi, q1 = 0, q2 = 0, Sip1 = 0, Sip2 = 0, u1 = 0, u2 = 0, sigma, smax = 0;
+
+                //Dimensões
+                int width = img.Width;
+                int widthStep = m.WidthStep;
+                int height = img.Height;
+                int nChan = m.NChannels; // number of channels - 3
+                int padding = m.WidthStep - m.NChannels * m.Width; // alinhamento bytes (padding)
+                int nPixels = width * height;
+
+                int[] histGray = new int[256];
+                histGray = Histogram_Gray(img);
+
+                for (t = 0; t <= 255; t++)
+                {
+                    q1 = q2 = Sip1 = Sip2 = 0;
+                    for (i = 0; i <= t; i++)
+                    {
+                        pi = (float)histGray[i] / nPixels;
+                        q1 += pi;
+                        Sip1 += (i * pi);
+                    }
+
+                    for (i = t + 1; i <= 255; i++)
+                    {
+                        pi = (float)histGray[i] / nPixels;
+                        q2 += pi;
+                        Sip2 += (i * pi);
+                    }
+
+                    if (q1 == 0 || q2 == 0)
+                        continue;
+
+                    u1 = Sip1 / q1;
+                    u2 = Sip2 / q2;
+
+                    sigma = q1 * q2 * Math.Pow((u1 - u2), 2);
+                    if (sigma > smax)
+                    {
+                        smax = sigma;
+                        tmax = t;
+                    }
+                }
+
+                return tmax;
             }
         }
 
@@ -1934,6 +2037,11 @@ namespace SS_OpenCV
             int offset = cX > UL_x_out ? -180 : 0;
             Rotation = 135-(float)(180 / Math.PI) * (float)Math.Atan((cY - UL_y_out) / (UL_x_out - cX)) + offset;
 
+            if (float.IsNaN(Rotation))            
+                Rotation = 0;
+            
+               
+
             Center_x = (int)cX;
             Center_y = (int)cY;
 
@@ -1946,9 +2054,12 @@ namespace SS_OpenCV
         }
 
 
-        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width, int Center_x, int Center_y)
+        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width, int Center_x, int Center_y, out int lowestX, out int lowestY)
         {
-            int lowestX = 0, highestX = 0, lowestY = 0, highestY = 0;
+            lowestX = 0;
+            lowestY = 0;
+            int highestY = 0, highestX = 0;
+
             int x, y;
 
             for (y = 0; y < matrix.GetLength(0); y++)
