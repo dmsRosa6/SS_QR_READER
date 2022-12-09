@@ -1885,10 +1885,10 @@ namespace SS_OpenCV
                 findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out, 
                     out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
 
-                //Rotation1(img, imgCopy, Rotation);
+                
+                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width, Center_x, Center_y);
 
-                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width);
-
+                Rotation1(img, imgCopy, Rotation);
 
             }
         }
@@ -1946,7 +1946,7 @@ namespace SS_OpenCV
         }
 
 
-        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width)
+        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width, int Center_x, int Center_y)
         {
             int lowestX = 0, highestX = 0, lowestY = 0, highestY = 0;
             int x, y;
@@ -1996,17 +1996,11 @@ namespace SS_OpenCV
             Console.WriteLine(highestX);
             Console.WriteLine(lowestY);
             Console.WriteLine(highestY);
-            height = highestY - lowestY;
-            width = highestX - lowestX;
+            height = Math.Max(Math.Abs(Center_y - highestY), Math.Abs(Center_y - lowestY)) * 2;
+            width = Math.Max(Math.Abs(Center_x - highestX), Math.Abs(Center_x - lowestX)) * 2;
 
         }
 
-        private static int[] GetRow(int[,] matrix, int rowNumber)
-        {
-            return Enumerable.Range(0, matrix.GetLength(1))
-                    .Select(x => matrix[rowNumber, x])
-                    .ToArray();
-        }
 
         private static double dist(float x1, float y1, float x2, float y2)
         {
