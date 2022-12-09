@@ -482,7 +482,7 @@ namespace SS_OpenCV
             float b;
             string c;
 
-            ImageClass.QRCodeReader(img, imgUndo, 0, out a, out a, out a, out a, out b, out c, out a, out a, out a, out a, out a, out a);
+            ImageClass.ComponentesLigadosClassico(img);
             
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen

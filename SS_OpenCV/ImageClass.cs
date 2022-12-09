@@ -12,6 +12,7 @@ using System.Security.Policy;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Linq;
 
 namespace SS_OpenCV
 {
@@ -1363,7 +1364,7 @@ namespace SS_OpenCV
         }
 
 
-        public static void ComponentesLigadosClassico(Image<Bgr, byte> img)
+ public static void ComponentesLigadosClassico(Image<Bgr, byte> img)
         {
             unsafe
             {
@@ -1390,9 +1391,9 @@ namespace SS_OpenCV
 
                 int[] mins;
 
-                int parent, son, temp;
+                int parent, son, temp,temp2;
 
-                int[] collisions = new int[1000];
+                int[] collisions = new int[height*width+1];
 
                 for (y = 0; y < height; y++)
                 {
@@ -1425,15 +1426,21 @@ namespace SS_OpenCV
                             else
                             {
                                 mins = MinOrdem(matrix[y, x + 1], matrix[y + 1, x]);
-                                matrix[y + 1, x + 1] = mins[0];
+
+                                if (mins[0] == 0) matrix[y + 1, x + 1] = mins[1];
+                                else matrix[y + 1, x + 1] = mins[0];
+
                                 if (matrix[y, x + 1] != 0 && matrix[y + 1, x] != 0)
                                 {
                                     parent = mins[0];
                                     son = mins[1];
                                     while (collisions[son] != son)
                                     {
+                                        //meio merdoso
                                         temp = collisions[son];
-                                        collisions[son] = parent;
+                                        temp2 = MinOrdem(parent, temp)[0];
+                                        collisions[son] = temp2;
+                                        parent = temp2;
                                         son = temp;
                                     }
                                     collisions[son] = parent;
@@ -1468,7 +1475,7 @@ namespace SS_OpenCV
 
                 TableForm.ShowTable(collisions, "colisoes");
 
-                TableForm.ShowTable(matrix, "componentes ligados");
+                //TableForm.ShowTable(matrix, "componentes ligados");
 
 
                 int[,] objectData = new int[objectsNumber+1,5];
@@ -1488,23 +1495,25 @@ namespace SS_OpenCV
                     }
                 }
 
-                TableForm.ShowTable(objectData, "informacao objetos");
-
                 int[,] found = new int[1000,2];
                 int foundIndex = 0;
+                double scale_relation = 24.0/9.0,scale;
+                double slack = 0.03;
 
                 for (x = 1; x < objectsNumber + 1; x++)
                 {
                     if (objectData[x, 0] == 0) continue;
 
-                    objectData[x, 3] = (int)Math.Round( (float)objectData[x, 1] / (float)objectData[x, 0]);
+                    objectData[x, 3] = (int)Math.Ceiling( (float)objectData[x, 1] / (float)objectData[x, 0]);
 
-                    objectData[x, 4] = (int)Math.Round((float)objectData[x, 2] / (float)objectData[x, 0]);
+                    objectData[x, 4] = (int)Math.Ceiling((float)objectData[x, 2] / (float)objectData[x, 0]);
 
 
                     for (y = x-1;y >=0;y--)
                     {
-                        if (objectData[x, 3] == objectData[y, 3] && objectData[x, 4] == objectData[y, 4])
+                        //a verificacao da relacao supoe que o primeiro objeto que isto encontra e o de fora, o que deve sempre acontecer mas nao tenho certeza
+                        scale = ((double)objectData[y, 0] / (double)objectData[x, 0]);
+                        if (objectData[x, 3] == objectData[y, 3] && objectData[x, 4] == objectData[y, 4] && scale >= (scale_relation-slack) && scale <= (scale_relation + slack))
                         {
                             found[foundIndex, 0] = x;
                             found[foundIndex, 1] = y;
@@ -1513,8 +1522,10 @@ namespace SS_OpenCV
                         }
                     }
                 }
-
+                TableForm.ShowTable(objectData, "informacao objetos");
                 TableForm.ShowTable(found, "QR");
+
+                
             }
         }
         //com binarizacao
@@ -1696,15 +1707,12 @@ namespace SS_OpenCV
 
                 int[,] matrix = new int[height + 2, width + 2];
                 int objectsNumber = 1;
-                
 
                 
-                int[] collisions = new int[1000];
-
-                int min;
-                Boolean isChanged = true;
                 int threshold = 17;
-                int iteCounter = 1;
+                int[] mins;
+                int parent, son, temp, temp2;
+                int[] collisions = new int[height * width + 1];
 
 
                 for (y = 0; y < height; y++)
@@ -1731,73 +1739,61 @@ namespace SS_OpenCV
                             if (Max(matrix[y, x + 1], matrix[y + 1, x]) == 0)
                             {
                                 matrix[y + 1, x + 1] = objectsNumber;
+                                collisions[objectsNumber] = objectsNumber;
                                 objectsNumber++;
 
                             }
                             else
                             {
-                                matrix[y + 1, x + 1] = Min(matrix[y, x + 1], matrix[y + 1, x]);
+                                mins = MinOrdem(matrix[y, x + 1], matrix[y + 1, x]);
 
+                                if (mins[0] == 0) matrix[y + 1, x + 1] = mins[1];
+                                else matrix[y + 1, x + 1] = mins[0];
+
+                                if (matrix[y, x + 1] != 0 && matrix[y + 1, x] != 0)
+                                {
+                                    parent = mins[0];
+                                    son = mins[1];
+                                    while (collisions[son] != son)
+                                    {
+                                        //meio merdoso
+                                        temp = collisions[son];
+                                        temp2 = MinOrdem(parent, temp)[0];
+                                        collisions[son] = temp2;
+                                        parent = temp2;
+                                        son = temp;
+                                    }
+                                    collisions[son] = parent;
+                                }
                             }
                         }
+
                         dataPtrCopy += nChan;
                     }
                     dataPtrCopy += padding;
-
                 }
 
-                while (isChanged)
+
+                for (int i = 1; i < objectsNumber; i++)
                 {
-                    isChanged = false;
-
-                    if (iteCounter % 2 == 0)
+                    if (collisions[i] != i)
                     {
-
-                        for (y = 0; y < height; y++)
-                        {
-                            for (x = 0; x < width; x++)
-                            {
-
-                                if (dataPtrCopy[0] == 0 && Max(matrix[y, x + 1], matrix[y + 1, x]) != 0)
-                                {
-                                    min = Min(matrix[y, x + 1], matrix[y + 1, x]);
-                                    if (min < matrix[y + 1, x + 1])
-                                    {
-                                        matrix[y + 1, x + 1] = min;
-                                        isChanged = true;
-                                    }
-
-                                }
-                                dataPtrCopy += nChan;
-                            }
-                            dataPtrCopy += padding;
-                        }
+                        collisions[i] = collisions[collisions[i]];
                     }
-                    else
-                    {
-                        for (y = width - 1; y >= 0; y--)
-                        {
-                            for (x = height - 1; x >= 0; x--)
-                            {
-                                if (dataPtrCopy[0] == 0 && Max(matrix[y + 1, x + 2], matrix[y + 2, x + 1]) != 0)
-                                {
-                                    min = Min(matrix[y + 1, x + 2], matrix[y + 2, x + 1]);
-                                    if (min < matrix[y + 1, x + 1])
-                                    {
-                                        matrix[y + 1, x + 1] = min;
-                                        isChanged = true;
-                                    }
-                                }
-
-                                dataPtrCopy -= nChan;
-                            }
-                            dataPtrCopy -= padding;
-                        }
-
-                    }
-                    iteCounter++;
                 }
+
+                for (y = 0; y < height; y++)
+                {
+                    for (x = 0; x < width; x++)
+                    {
+                        matrix[y + 1, x + 1] = collisions[matrix[y + 1, x + 1]];
+                        dataPtrCopy += nChan;
+                    }
+                    dataPtrCopy += padding;
+                }
+
                 //TableForm.ShowTable(collisions, "colisoes");
+
                 //TableForm.ShowTable(matrix, "componentes ligados");
 
 
@@ -1818,11 +1814,12 @@ namespace SS_OpenCV
                     }
                 }
 
-                //TableForm.ShowTable(objectData, "informacao objetos");
+                int[,] alignmentBlocks = new int[1000, 3];
+                double[] alignmentBlocksScale = new double[1000];
 
-                int[,] alignmentBlocks = new int[3, 3];
+                double perfectScale = 24.0 / 9.0, scale;
+                double relationSlack = 2, centerSlack = 2;
                 int foundIndex = 0;
-                
 
                 for (x = 1; x < objectsNumber + 1; x++)
                 {
@@ -1831,26 +1828,66 @@ namespace SS_OpenCV
                     objectData[x, 3] = (int)Math.Round((float)objectData[x, 1] / (float)objectData[x, 0]);
                     objectData[x, 4] = (int)Math.Round((float)objectData[x, 2] / (float)objectData[x, 0]);
 
+
                     for (y = x - 1; y >= 0; y--)
                     {
-                        if (objectData[x, 3] == objectData[y, 3] && objectData[x, 4] == objectData[y, 4])
+                        //a verificacao da relacao supoe que o primeiro objeto que isto encontra e o de fora, o que deve sempre acontecer mas nao tenho certeza
+                        scale = ((double)objectData[y, 0] / (double)objectData[x, 0]);
+                        if ( Math.Abs(objectData[x, 3] - objectData[y, 3]) <= 2 && Math.Abs(objectData[x, 4] - objectData[y, 4]) <= centerSlack
+                            && Math.Abs(perfectScale - scale) <= relationSlack)
                         {
+                            Console.WriteLine(perfectScale - scale);
                             alignmentBlocks[foundIndex, 0] = objectData[x, 3];
                             alignmentBlocks[foundIndex, 1] = objectData[x, 4];
-                            alignmentBlocks[foundIndex++, 2] = y;
+                            alignmentBlocks[foundIndex, 2] = y;
+                            alignmentBlocksScale[foundIndex] = scale;
+                            foundIndex++;
                             break;
                         }
                     }
                 }
+                //TableForm.ShowTable(alignmentBlocks, "AB");
+
+                double slackScalesBetweenAB = 0.2;
+                for(int i = 0; i < foundIndex; i++)
+                {   
+                    for(int j = i+1; j < foundIndex; j++)
+                    {
+                        for(int k = j+1; k < foundIndex; k++)
+                        {
+                            if (Math.Abs(alignmentBlocksScale[i] - alignmentBlocksScale[j]) <= slackScalesBetweenAB
+                                && Math.Abs(alignmentBlocksScale[i] - alignmentBlocksScale[k]) <= slackScalesBetweenAB
+                                && Math.Abs(alignmentBlocksScale[j] - alignmentBlocksScale[k]) <= slackScalesBetweenAB)
+                            {
+                                int[,] aux = new int[3, 3];
+                                for(int a = 0; a < 3; a++)
+                                {
+                                    aux[0, a] = alignmentBlocks[i, a];
+                                    aux[1, a] = alignmentBlocks[j, a];
+                                    aux[2, a] = alignmentBlocks[k, a];
+                                }
+                                alignmentBlocks = aux;
+                                goto mekie;
+                            }
+                        }
+                    }                    
+                }
+
+                mekie:
+                //TableForm.ShowTable(alignmentBlocks, "Alignment Blocks");
+                       
 
 
-                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width);
+                
+
 
 
                 findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out, 
                     out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
 
-                Rotation1(img, imgCopy, Rotation);
+                //Rotation1(img, imgCopy, Rotation);
+
+                getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width);
 
 
             }
@@ -1860,7 +1897,7 @@ namespace SS_OpenCV
 
 
 
-        public static void findCenterAndAlignment(int[,] alignmentBlocks, out int Center_x, out int Center_y, out float Rotation,
+        private static void findCenterAndAlignment(int[,] alignmentBlocks, out int Center_x, out int Center_y, out float Rotation,
             out int UL_x_out, out int UL_y_out, out int UR_x_out, out int UR_y_out, out int LL_x_out, out int LL_y_out)
         {
             double dist01 = dist(alignmentBlocks[0, 0], alignmentBlocks[0, 1], alignmentBlocks[1, 0], alignmentBlocks[1, 1]);
@@ -1897,7 +1934,6 @@ namespace SS_OpenCV
             int offset = cX > UL_x_out ? -180 : 0;
             Rotation = 135-(float)(180 / Math.PI) * (float)Math.Atan((cY - UL_y_out) / (UL_x_out - cX)) + offset;
 
-
             Center_x = (int)cX;
             Center_y = (int)cY;
 
@@ -1907,11 +1943,10 @@ namespace SS_OpenCV
             LL_x_out = 0;
             LL_y_out = 0;
 
-
         }
 
 
-        public static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width)
+        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width)
         {
             int lowestX = 0, highestX = 0, lowestY = 0, highestY = 0;
             int x, y;
@@ -1966,9 +2001,14 @@ namespace SS_OpenCV
 
         }
 
+        private static int[] GetRow(int[,] matrix, int rowNumber)
+        {
+            return Enumerable.Range(0, matrix.GetLength(1))
+                    .Select(x => matrix[rowNumber, x])
+                    .ToArray();
+        }
 
-
-        public static double dist(float x1, float y1, float x2, float y2)
+        private static double dist(float x1, float y1, float x2, float y2)
         {
             return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
 
