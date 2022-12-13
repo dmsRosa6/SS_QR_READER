@@ -13,6 +13,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace SS_OpenCV
 {
@@ -323,7 +324,6 @@ namespace SS_OpenCV
                         dataPtr += nChan;
                     }
                     dataPtr += padding;
-
                 }
             }
         }
@@ -334,6 +334,9 @@ namespace SS_OpenCV
             {
                 // direct access to the image memory(sequencial)
                 // direcion top left -> bottom right
+
+                Console.WriteLine(dx);
+                Console.WriteLine(dy);
 
                 MIplImage m = img.MIplImage;
                 MIplImage copy = imgCopy.MIplImage;
@@ -357,8 +360,7 @@ namespace SS_OpenCV
                     newY = y - dy;
                     for (x = 0; x < width; x++)
                     {
-
-                        newX = -dx + x;
+                        newX = x - dx;
 
                         if (newX >= width || newY >= height || newX < 0 || newY < 0)
                         {
@@ -373,11 +375,9 @@ namespace SS_OpenCV
                             dataPtr[1] = newPixel[1];
                             dataPtr[2] = newPixel[2];
                         }
-
                         dataPtr += nChan;
                     }
                     dataPtr += padding;
-
                 }
             }
         }
@@ -1695,6 +1695,19 @@ namespace SS_OpenCV
         }
 
 
+        public class Point
+        {
+            public int x;
+            public int y;
+
+            Point(int x, int y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
+
         /// QR code reader
         /// </summary>
         /// <param name="img"> imagem de trabalho </param>
@@ -1734,11 +1747,11 @@ namespace SS_OpenCV
             {
                 // direct access to the image memory(sequencial)
                 // direcion top left -> bottom right
-                MIplImage origin = imgCopy.MIplImage;
-                MIplImage copy = img.MIplImage;
+                MIplImage origin = img.MIplImage;
+                MIplImage copy = imgCopy.MIplImage;
 
-                byte* dataPtrOrigin = (byte*)origin.ImageData.ToPointer(); // Pointer to the image
-                byte* dataPtrCopy = (byte*)origin.ImageData.ToPointer(); // imagem de trabalho
+                byte* dataPtr = (byte*)origin.ImageData.ToPointer(); // Pointer to the image
+                byte* dataPtrCopy = (byte*)copy.ImageData.ToPointer(); // imagem de trabalho
 
                 int width = copy.Width;
                 int height = copy.Height;
@@ -1760,27 +1773,26 @@ namespace SS_OpenCV
                 int threshold = level == 4 ? Otsu_getTreshhold(img) : 17;
 
 
-
                 for (y = 0; y < height; y++)
                 {
                     for (x = 0; x < width; x++)
                     {
-                        result = (int)Math.Round((dataPtrCopy[0] + dataPtrCopy[1] + dataPtrCopy[2]) / 3.0);
+                        result = (int)Math.Round((dataPtr[0] + dataPtr[1] + dataPtr[2]) / 3.0);
 
                         if (result > threshold)
                         {
-                            dataPtrCopy[0] = (byte)255;
-                            dataPtrCopy[1] = (byte)255;
-                            dataPtrCopy[2] = (byte)255;
+                            dataPtr[0] = (byte)255;
+                            dataPtr[1] = (byte)255;
+                            dataPtr[2] = (byte)255;
                         }
                         else
                         {
-                            dataPtrCopy[0] = (byte)0;
-                            dataPtrCopy[1] = (byte)0;
-                            dataPtrCopy[2] = (byte)0;
+                            dataPtr[0] = (byte)0;
+                            dataPtr[1] = (byte)0;
+                            dataPtr[2] = (byte)0;
                         }
 
-                        if (dataPtrCopy[0] == 0)
+                        if (dataPtr[0] == 0)
                         {
                             if (Max(matrix[y, x + 1], matrix[y + 1, x]) == 0)
                             {
@@ -1814,9 +1826,9 @@ namespace SS_OpenCV
                             }
                         }
 
-                        dataPtrCopy += nChan;
+                        dataPtr += nChan;
                     }
-                    dataPtrCopy += padding;
+                    dataPtr += padding;
                 }
 
 
@@ -1828,14 +1840,13 @@ namespace SS_OpenCV
                     }
                 }
 
+
                 for (y = 0; y < height; y++)
                 {
                     for (x = 0; x < width; x++)
                     {
-                        matrix[y + 1, x + 1] = collisions[matrix[y + 1, x + 1]];
-                        dataPtrCopy += nChan;
-                    }
-                    dataPtrCopy += padding;
+                        matrix[y + 1, x + 1] = collisions[matrix[y + 1, x + 1]];                       
+                    }                    
                 }
 
                 //TableForm.ShowTable(collisions, "colisoes");
@@ -1920,30 +1931,105 @@ namespace SS_OpenCV
                 }
 
 
-            mekie:
-                //TableForm.ShowTable(alignmentBlocks, "Alignment Blocks");              
+                mekie:
+                              
 
+                int cornerX, cornerY;
 
                 findCenterAndAlignment(alignmentBlocks, out Center_x, out Center_y, out Rotation, out UL_x_out,
                     out UL_y_out, out UR_x_out, out UR_y_out, out LL_x_out, out LL_y_out);
 
                 getHeightAndWidth(alignmentBlocks, matrix, out Height, out Width,
-                    Center_x, Center_y, out int lowestX, out int lowestY);
+                    Center_x, Center_y, out cornerX, out cornerY);
+           
 
-                Translation(img, imgCopy, -lowestX, -lowestY);
+                if (level < 5)
+                {
+                    float rotate = (float) -(Math.PI/180) * Rotation;
+                    Rotation1(img, imgCopy, rotate);
+                    int[] newQrCenter = rotate_point(width / 2, height / 2, rotate, Center_x, Center_y);
+                    int[] newCorner = rotate_point(width / 2, height / 2, rotate, cornerX, cornerY);
 
-                Rotation1(img, imgCopy, Rotation);
+                    int qrSide = 2 * Math.Abs(newCorner[0] - newQrCenter[0]);
+                    img.ROI = new Rectangle(newQrCenter[0] - (qrSide / 2), newQrCenter[1] - (qrSide / 2), qrSide, qrSide);
+                    img = img.Copy();
 
-
+                    read(img, level, out BinaryOut, qrSide);
+                }                
             }
         }
 
-        public static int Otsu_getTreshhold(Emgu.CV.Image<Bgr, byte> img)
+
+
+        private static void read(Image<Bgr, byte> img, int level, out String binaryOut, int qrSide)
         {
             unsafe
             {
+                binaryOut = "";
+
+                MIplImage origin = img.MIplImage;                
+
+                int width = origin.Width;
+                int height = origin.Height;
+
+                int numModulesPerSide = level == 6 ? 25 : 21;
+                double pixelsPerModule = (double) qrSide / numModulesPerSide;
 
 
+                
+                double offsetX, offsetY;
+                int x1, y1;
+
+                offsetX = 8.5 * pixelsPerModule;
+                offsetY = pixelsPerModule / 2;
+
+                for (int y = 0; y < 8; y++)
+                {
+                    for (int x = 0; x < numModulesPerSide - 2 * 8; x++)
+                    {
+                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
+                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+
+                        binaryOut += img[y1, x1].Green == 0 ? 1 : 0;                        
+                    }
+                }
+
+                offsetX = pixelsPerModule / 2;
+                offsetY = pixelsPerModule * 8.5;
+
+                for (int y = 0; y < numModulesPerSide - 2 * 8; y++)
+                {
+                    for (int x = 0; x < numModulesPerSide; x++)
+                    {
+                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
+                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+
+                        binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
+                    }
+                }
+
+                offsetX = 8.5 * pixelsPerModule;
+                offsetY = 13.5 * pixelsPerModule;
+
+                for (int y = 0; y < 8; y++)
+                {
+                    for (int x = 0; x < numModulesPerSide - 8; x++)
+                    {
+                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
+                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+
+                        binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
+                    }
+                }        
+            }
+        }
+
+
+
+        private static int Otsu_getTreshhold(Image<Bgr, byte> img)
+        {
+            unsafe
+            {
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.ImageData.ToPointer();
 
@@ -1954,8 +2040,6 @@ namespace SS_OpenCV
                 int width = img.Width;
                 int widthStep = m.WidthStep;
                 int height = img.Height;
-                int nChan = m.NChannels; // number of channels - 3
-                int padding = m.WidthStep - m.NChannels * m.Width; // alinhamento bytes (padding)
                 int nPixels = width * height;
 
                 int[] histGray = new int[256];
@@ -1995,9 +2079,6 @@ namespace SS_OpenCV
                 return tmax;
             }
         }
-
-
-
 
 
         private static void findCenterAndAlignment(int[,] alignmentBlocks, out int Center_x, out int Center_y, out float Rotation,
@@ -2087,16 +2168,14 @@ namespace SS_OpenCV
 
             LL_x_out = alignmentBlocks[ll, 0];
             LL_y_out = alignmentBlocks[ll, 1];
-
         }
 
 
-        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width, int Center_x, int Center_y, out int lowestX, out int lowestY)
+        private static void getHeightAndWidth(int[,] alignmentBlocks, int[,] matrix, out int height, out int width, int Center_x, int Center_y, out int cornerX, out int cornerY)
         {
-            lowestX = 0;
-            lowestY = 0;
-            int highestY = 0, highestX = 0;
-
+            int lowestX = 0, lowestY = 0, highestY = 0, highestX = 0;
+            cornerY = 0;
+            cornerX = 0;
             int x, y;
 
             for (y = 0; y < matrix.GetLength(0); y++)
@@ -2133,6 +2212,8 @@ namespace SS_OpenCV
                     if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
                     {
                         highestX = x;
+                        cornerX = x;
+                        cornerY = y;
                         goto end;
                     }
                 }
@@ -2144,9 +2225,9 @@ namespace SS_OpenCV
             Console.WriteLine(highestX);
             Console.WriteLine(lowestY);
             Console.WriteLine(highestY);
+
             height = Math.Max(Math.Abs(Center_y - highestY), Math.Abs(Center_y - lowestY)) * 2;
             width = Math.Max(Math.Abs(Center_x - highestX), Math.Abs(Center_x - lowestX)) * 2;
-
         }
 
         private static int[] rotate_point(int cx, int cy, float angle, int px, int py)
@@ -2174,8 +2255,6 @@ namespace SS_OpenCV
             return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
 
         }
-
-
 
 
 

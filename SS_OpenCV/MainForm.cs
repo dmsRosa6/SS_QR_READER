@@ -269,7 +269,7 @@ namespace SS_OpenCV
             int Ytranslation = Convert.ToInt32(formYtranslation.ValueTextBox.Text);
 
 
-            ImageClass.Translation(img, img, Xtranslation, Ytranslation);
+            ImageClass.Translation(img, img.Copy(), Xtranslation, Ytranslation);
 
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen
@@ -478,11 +478,9 @@ namespace SS_OpenCV
 
             //copy Undo Image
             imgUndo = img.Copy();
-            int a;
-            float b;
-            string c;
+ 
 
-            ImageClass.ComponentesLigadosClassico(img);
+            ImageClass.QRCodeReader(img, img.Copy(), 1, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _);
             
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen
