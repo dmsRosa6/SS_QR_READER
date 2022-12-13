@@ -208,7 +208,8 @@ namespace SS_OpenCV
 
         public static void Rotation1(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, float angle)
         {
-
+            Rotation(img, imgCopy, angle);
+            return;
             unsafe
             {
                 // direct access to the image memory(sequencial)
@@ -1770,7 +1771,7 @@ namespace SS_OpenCV
                 int parent, son, temp, temp2;
                 int[] collisions = new int[height * width + 1];
 
-                int threshold = level == 4 ? Otsu_getTreshhold(img) : 17;
+                int threshold = level >= 4 ? Otsu_getTreshhold(img) : 17;
 
 
                 for (y = 0; y < height; y++)
@@ -1849,10 +1850,6 @@ namespace SS_OpenCV
                     }                    
                 }
 
-                //TableForm.ShowTable(collisions, "colisoes");
-
-                //TableForm.ShowTable(matrix, "componentes ligados");
-
 
                 int[,] objectData = new int[objectsNumber + 1, 5];
                 int obj;
@@ -1875,7 +1872,8 @@ namespace SS_OpenCV
                 double[] alignmentBlocksScale = new double[1000];
 
                 double perfectScale = 24.0 / 9.0, scale;
-                double relationSlack = 2, centerSlack = 2;
+                double relationSlack = (level != 5)? 2 : 2;
+                double centerSlack = (level != 5)? 2 : 2;
                 int foundIndex = 0;
 
                 for (x = 1; x < objectsNumber + 1; x++)
@@ -1903,9 +1901,8 @@ namespace SS_OpenCV
                         }
                     }
                 }
-                //TableForm.ShowTable(alignmentBlocks, "AB");
 
-                double slackScalesBetweenAB = 0.2;
+                double slackScalesBetweenAB = (level != 5)? 0.2 : 0.2;
                 for (int i = 0; i < foundIndex; i++)
                 {
                     for (int j = i + 1; j < foundIndex; j++)
@@ -1943,19 +1940,20 @@ namespace SS_OpenCV
                     Center_x, Center_y, out cornerX, out cornerY);
            
 
-                if (level < 5)
-                {
-                    float rotate = (float) -(Math.PI/180) * Rotation;
-                    Rotation1(img, imgCopy, rotate);
-                    int[] newQrCenter = rotate_point(width / 2, height / 2, rotate, Center_x, Center_y);
-                    int[] newCorner = rotate_point(width / 2, height / 2, rotate, cornerX, cornerY);
+                int dx = width / 2 - Center_x;
+                int dy = height / 2 - Center_y;
+                Translation(img, img.Copy(), dx, dy);
 
-                    int qrSide = 2 * Math.Abs(newCorner[0] - newQrCenter[0]);
-                    img.ROI = new Rectangle(newQrCenter[0] - (qrSide / 2), newQrCenter[1] - (qrSide / 2), qrSide, qrSide);
-                    img = img.Copy();
+                float rotate = (float) -(Math.PI/180) * Rotation;
+                Rotation1(img, img.Copy(), rotate);
 
-                    read(img, level, out BinaryOut, qrSide);
-                }                
+                int[] newCorner = rotate_point(width / 2, height / 2, rotate, cornerX + dx, cornerY + dy);
+                int qrSide = 2 * Math.Abs(newCorner[0] - width / 2);
+
+                img.ROI = new Rectangle((width / 2) - (qrSide / 2), (height / 2) - (qrSide / 2), qrSide, qrSide);
+                img = img.Copy();
+
+                read(img, level, out BinaryOut, qrSide);                
             }
         }
 
@@ -1974,35 +1972,33 @@ namespace SS_OpenCV
 
                 int numModulesPerSide = level == 6 ? 25 : 21;
                 double pixelsPerModule = (double) qrSide / numModulesPerSide;
-
-
                 
                 double offsetX, offsetY;
                 int x1, y1;
 
                 offsetX = 8.5 * pixelsPerModule;
-                offsetY = pixelsPerModule / 2;
+                offsetY = 0.5 * pixelsPerModule;
 
                 for (int y = 0; y < 8; y++)
                 {
                     for (int x = 0; x < numModulesPerSide - 2 * 8; x++)
                     {
-                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
-                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+                        x1 = (int)Math.Min(Math.Round(offsetX + x * pixelsPerModule), width-1);
+                        y1 = (int)Math.Min(Math.Round(offsetY + y * pixelsPerModule), height-1);
 
                         binaryOut += img[y1, x1].Green == 0 ? 1 : 0;                        
                     }
                 }
 
-                offsetX = pixelsPerModule / 2;
-                offsetY = pixelsPerModule * 8.5;
+                offsetX = 0.5 * pixelsPerModule;
+                offsetY = 8.5 * pixelsPerModule;
 
                 for (int y = 0; y < numModulesPerSide - 2 * 8; y++)
                 {
                     for (int x = 0; x < numModulesPerSide; x++)
                     {
-                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
-                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+                        x1 = (int)Math.Min( Math.Round(offsetX + x * pixelsPerModule), width-1);
+                        y1 = (int)Math.Min( Math.Round(offsetY + y * pixelsPerModule), height-1);
 
                         binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
                     }
@@ -2015,8 +2011,8 @@ namespace SS_OpenCV
                 {
                     for (int x = 0; x < numModulesPerSide - 8; x++)
                     {
-                        x1 = (int)Math.Round(offsetX + x * pixelsPerModule);
-                        y1 = (int)Math.Round(offsetY + y * pixelsPerModule);
+                        x1 = Math.Min( (int)Math.Round(offsetX + x * pixelsPerModule), width-1);
+                        y1 = Math.Min( (int)Math.Round(offsetY + y * pixelsPerModule), height-1);
 
                         binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
                     }
@@ -2221,11 +2217,6 @@ namespace SS_OpenCV
 
             end:
 
-            Console.WriteLine(lowestX);
-            Console.WriteLine(highestX);
-            Console.WriteLine(lowestY);
-            Console.WriteLine(highestY);
-
             height = Math.Max(Math.Abs(Center_y - highestY), Math.Abs(Center_y - lowestY)) * 2;
             width = Math.Max(Math.Abs(Center_x - highestX), Math.Abs(Center_x - lowestX)) * 2;
         }
@@ -2253,7 +2244,6 @@ namespace SS_OpenCV
         private static double dist(float x1, float y1, float x2, float y2)
         {
             return Math.Sqrt(Math.Pow(x2 - x1, 2) + Math.Pow(y2 - y1, 2));
-
         }
 
 

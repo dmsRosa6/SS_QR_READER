@@ -480,7 +480,7 @@ namespace SS_OpenCV
             imgUndo = img.Copy();
  
 
-            ImageClass.QRCodeReader(img, img.Copy(), 1, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _);
+            ImageClass.QRCodeReader(img, img.Copy(), 5, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _, out _);
             
             ImageViewer.Image = img;
             ImageViewer.Refresh(); // refresh image on the screen
