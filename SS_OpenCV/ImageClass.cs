@@ -1695,6 +1695,18 @@ namespace SS_OpenCV
         }
 
 
+        public class Point
+        {
+            public int x;
+            public int y;
+
+            Point(int x, int y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+        }
+
 
         /// QR code reader
         /// </summary>
@@ -1837,6 +1849,10 @@ namespace SS_OpenCV
                     }                    
                 }
 
+                //TableForm.ShowTable(collisions, "colisoes");
+
+                //TableForm.ShowTable(matrix, "componentes ligados");
+
 
                 int[,] objectData = new int[objectsNumber + 1, 5];
                 int obj;
@@ -1874,7 +1890,6 @@ namespace SS_OpenCV
                     {
                         //a verificacao da relacao supoe que o primeiro objeto que isto encontra e o de fora, o que deve sempre acontecer mas nao tenho certeza
                         scale = ((double)objectData[y, 0] / (double)objectData[x, 0]);
-
                         if (Math.Abs(objectData[x, 3] - objectData[y, 3]) <= 2 && Math.Abs(objectData[x, 4] - objectData[y, 4]) <= centerSlack
                             && Math.Abs(perfectScale - scale) <= relationSlack)
                         {
@@ -1888,6 +1903,7 @@ namespace SS_OpenCV
                         }
                     }
                 }
+                //TableForm.ShowTable(alignmentBlocks, "AB");
 
                 double slackScalesBetweenAB = 0.2;
                 for (int i = 0; i < foundIndex; i++)
@@ -1915,7 +1931,8 @@ namespace SS_OpenCV
                 }
 
 
-                mekie:                              
+                mekie:
+                              
 
                 int cornerX, cornerY;
 
@@ -1950,18 +1967,21 @@ namespace SS_OpenCV
             {
                 binaryOut = "";
 
-                MIplImage origin = img.MIplImage;
+                MIplImage origin = img.MIplImage;                
+
                 int width = origin.Width;
                 int height = origin.Height;
 
                 int numModulesPerSide = level == 6 ? 25 : 21;
                 double pixelsPerModule = (double) qrSide / numModulesPerSide;
+
+
                 
                 double offsetX, offsetY;
                 int x1, y1;
 
                 offsetX = 8.5 * pixelsPerModule;
-                offsetY = 0.5 * pixelsPerModule;
+                offsetY = pixelsPerModule / 2;
 
                 for (int y = 0; y < 8; y++)
                 {
@@ -1974,8 +1994,8 @@ namespace SS_OpenCV
                     }
                 }
 
-                offsetX = 0.5 * pixelsPerModule;
-                offsetY = 8.5 * pixelsPerModule;
+                offsetX = pixelsPerModule / 2;
+                offsetY = pixelsPerModule * 8.5;
 
                 for (int y = 0; y < numModulesPerSide - 2 * 8; y++)
                 {
@@ -2134,7 +2154,7 @@ namespace SS_OpenCV
 
             //if angle is in 2nd or 3rd quadrant add offset
             int offset = cX > UL_x_out ? -180 : 0;
-            Rotation = 135 - (float)(180 / Math.PI) * (float)Math.Atan2(cY - UL_y_out, UL_x_out - cX) + offset;
+            Rotation = 135 - (float)(180 / Math.PI) * (float)Math.Atan((cY - UL_y_out) / (UL_x_out - cX)) + offset;
 
             if (float.IsNaN(Rotation))
                 Rotation = 0;
@@ -2200,6 +2220,11 @@ namespace SS_OpenCV
             }
 
             end:
+
+            Console.WriteLine(lowestX);
+            Console.WriteLine(highestX);
+            Console.WriteLine(lowestY);
+            Console.WriteLine(highestY);
 
             height = Math.Max(Math.Abs(Center_y - highestY), Math.Abs(Center_y - lowestY)) * 2;
             width = Math.Max(Math.Abs(Center_x - highestX), Math.Abs(Center_x - lowestX)) * 2;
