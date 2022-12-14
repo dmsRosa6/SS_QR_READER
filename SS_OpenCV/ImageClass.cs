@@ -1696,17 +1696,6 @@ namespace SS_OpenCV
         }
 
 
-        public class Point
-        {
-            public int x;
-            public int y;
-
-            Point(int x, int y)
-            {
-                this.x = x;
-                this.y = y;
-            }
-        }
 
 
         /// QR code reader
@@ -1815,7 +1804,6 @@ namespace SS_OpenCV
                                     son = mins[1];
                                     while (collisions[son] != son)
                                     {
-                                        //meio merdoso
                                         temp = collisions[son];
                                         temp2 = MinOrdem(parent, temp)[0];
                                         collisions[son] = temp2;
@@ -1872,8 +1860,8 @@ namespace SS_OpenCV
                 double[] alignmentBlocksScale = new double[1000];
 
                 double perfectScale = 24.0 / 9.0, scale;
-                double relationSlack = (level != 5)? 2 : 2;
-                double centerSlack = (level != 5)? 2 : 2;
+                double relationSlack = (level != 6)? 2 : 0.5;
+                double centerSlack = (level != 6)? 2 : 0.2;
                 int foundIndex = 0;
 
                 for (x = 1; x < objectsNumber + 1; x++)
@@ -1902,7 +1890,7 @@ namespace SS_OpenCV
                     }
                 }
 
-                double slackScalesBetweenAB = (level != 5)? 0.2 : 0.2;
+                double slackScalesBetweenAB = (level == 6)? 0.2 : 0.2;
                 for (int i = 0; i < foundIndex; i++)
                 {
                     for (int j = i + 1; j < foundIndex; j++)
@@ -1964,7 +1952,6 @@ namespace SS_OpenCV
             unsafe
             {
                 binaryOut = "";
-
                 MIplImage origin = img.MIplImage;                
 
                 int width = origin.Width;
@@ -1997,8 +1984,8 @@ namespace SS_OpenCV
                 {
                     for (int x = 0; x < numModulesPerSide; x++)
                     {
-                        x1 = (int)Math.Min( Math.Round(offsetX + x * pixelsPerModule), width-1);
-                        y1 = (int)Math.Min( Math.Round(offsetY + y * pixelsPerModule), height-1);
+                        x1 = (int) Math.Min( Math.Round(offsetX + x * pixelsPerModule), width-1);
+                        y1 = (int) Math.Min( Math.Round(offsetY + y * pixelsPerModule), height-1);
 
                         binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
                     }
@@ -2011,8 +1998,8 @@ namespace SS_OpenCV
                 {
                     for (int x = 0; x < numModulesPerSide - 8; x++)
                     {
-                        x1 = Math.Min( (int)Math.Round(offsetX + x * pixelsPerModule), width-1);
-                        y1 = Math.Min( (int)Math.Round(offsetY + y * pixelsPerModule), height-1);
+                        x1 = (int) Math.Min(Math.Round(offsetX + x * pixelsPerModule), width-1);
+                        y1 = (int) Math.Min(Math.Round(offsetY + y * pixelsPerModule), height-1);
 
                         binaryOut += img[y1, x1].Green == 0 ? 1 : 0;
                     }
@@ -2175,34 +2162,49 @@ namespace SS_OpenCV
             int x, y;
 
             for (y = 0; y < matrix.GetLength(0); y++)
-                for (x = 0; x < matrix.GetLength(1); x++)
-                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2]) {
+            {
+                for (x = 0; x < matrix.GetLength(1); x++) 
+                { 
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
+                    {
                         lowestY = y;
                         goto nextLoop1;
                     }
+                }
+            }
 
-                nextLoop1:
+            nextLoop1:
 
             for (y = matrix.GetLength(0) - 1; y >= 0; y--)
-                for (x = 0; x < matrix.GetLength(1); x++)
+            { 
+                for (x = 0; x < matrix.GetLength(1); x++) 
+                { 
                     if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
                     {
                         highestY = y;
                         goto nextLoop2;
-
                     }
+                }
+            }
 
-                nextLoop2:
+            nextLoop2:
 
             for (x = 0; x < matrix.GetLength(1); x++)
+            {
                 for (y = 0; y < matrix.GetLength(0); y++)
-                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2]) {
+                {
+                    if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
+                    {
                         lowestX = x;
                         goto nextLoop3;
                     }
-                nextLoop3:
+               
+                }
+            }
+            nextLoop3:
 
-            for (x = matrix.GetLength(1) - 1; x >= 0; x--) {
+            for (x = matrix.GetLength(1) - 1; x >= 0; x--)
+            {
                 for (y = 0; y < matrix.GetLength(0); y++)
                 {
                     if (matrix[y, x] == alignmentBlocks[0, 2] || matrix[y, x] == alignmentBlocks[1, 2] || matrix[y, x] == alignmentBlocks[2, 2])
