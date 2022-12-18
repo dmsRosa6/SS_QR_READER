@@ -1856,6 +1856,8 @@ namespace SS_OpenCV
                     }
                 }
 
+                TableForm.ShowTable(objectData, "Object Data");
+
                 int[,] alignmentBlocks = new int[1000, 3];
                 double[] alignmentBlocksScale = new double[1000];
 
@@ -1871,15 +1873,14 @@ namespace SS_OpenCV
                     objectData[x, 3] = (int)Math.Round((float)objectData[x, 1] / (float)objectData[x, 0]);
                     objectData[x, 4] = (int)Math.Round((float)objectData[x, 2] / (float)objectData[x, 0]);
 
-
                     for (y = x - 1; y >= 0; y--)
                     {
-                        //a verificacao da relacao supoe que o primeiro objeto que isto encontra e o de fora, o que deve sempre acontecer mas nao tenho certeza
+                        //a verificacao da relacao supoe que o primeiro objeto que isto encontra
+                        //e o de fora, o que deve sempre acontecer
                         scale = ((double)objectData[y, 0] / (double)objectData[x, 0]);
                         if (Math.Abs(objectData[x, 3] - objectData[y, 3]) <= 2 && Math.Abs(objectData[x, 4] - objectData[y, 4]) <= centerSlack
-                            && Math.Abs(perfectScale - scale) <= relationSlack)
-                        {
-                            Console.WriteLine(perfectScale - scale);
+                            && Math.Abs(perfectScale - scale) <= relationSlack) 
+                        {                            
                             alignmentBlocks[foundIndex, 0] = objectData[x, 3];
                             alignmentBlocks[foundIndex, 1] = objectData[x, 4];
                             alignmentBlocks[foundIndex, 2] = y;
@@ -1889,6 +1890,8 @@ namespace SS_OpenCV
                         }
                     }
                 }
+
+                TableForm.ShowTable(alignmentBlocks, "Alignment Blocks");
 
                 double slackScalesBetweenAB = (level == 6)? 0.2 : 0.2;
                 for (int i = 0; i < foundIndex; i++)
